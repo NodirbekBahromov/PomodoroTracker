@@ -245,8 +245,10 @@
             // Update active button styling
             document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('active'));
             
-            // Add a check to ensure the element exists before trying to access its class list
-            const newModeBtn = document.getElementById(`${newMode}-btn`);
+            // Convert camelCase to kebab-case for the ID selector
+            const newModeId = newMode.replace(/([A-Z])/g, "-$1").toLowerCase() + '-btn';
+            const newModeBtn = document.getElementById(newModeId);
+            
             if (newModeBtn) {
                 newModeBtn.classList.add('active');
             }
