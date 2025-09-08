@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Use min-height for adaptability */
+            color: #e2e8f0; /* Light text color */
+        }
+        .container {
+            background-color: #2d3748; /* Darker container background */
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 90%;
+            width: 400px;
+        }
+        /* Make the container fluid on small screens and constrained on larger ones */
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.5rem;
+                width: 95%;
+            }
+        }
+        .timer-display {
+            font-size: 5rem;
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            text-align: center;
+            margin-top: 1.5rem;
+            margin-bottom: 2rem;
+            color: #48bb78; /* Green timer color */
+        }
+        /* Adjust font size for different screen sizes */
+        @media (max-width: 640px) {
+            .timer-display {
+                font-size: 4rem;
+            }
+        }
+        .mode-button {
+            transition: all 0.2s;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            background-color: #4a5568; /* Dark button background */
+            color: #a0aec0; /* Lighter text for inactive buttons */
+        }
+        .mode-button.active {
+            background-color: #48bb78; /* Green active button background */
+            color: #1a202c; /* Dark text for active button */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .control-button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #pomodoro-duration {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>');
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1.5em;
+            padding-right: 2rem;
+        }
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            max-width: 500px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="flex justify-around items-center space-x-2 p-2">
+            <button id="pomodoro-btn" class="mode-button active">Pomodoro</button>
+            <button id="short-break-btn" class="mode-button">Short Break</button>
+            <button id="long-break-btn" class="mode-button">Long Break</button>
+        </div>
+        
+        <div class="flex items-center space-x-2 mt-4 justify-center">
+            <label for="pomodoro-duration" class="text-sm font-medium text-gray-400">Work Time:</label>
+            <select id="pomodoro-duration" class="bg-gray-700 text-white rounded-md p-1 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer">
+                <option value="25">25 minutes</option>
+                <option value="50">50 minutes</option>
+            </select>
+        </div>
+
+        <div id="timer" class="timer-display">25:00</div>
+        <div class="flex justify-center space-x-4 mt-8">
+            <button id="start-btn" class="control-button bg-green-500 hover:bg-green-600 text-white shadow-md">Start</button>
+            <button id="pause-btn" class="control-button bg-yellow-500 hover:bg-yellow-600 text-white shadow-md">Pause</button>
+            <button id="reset-btn" class="control-button bg-red-500 hover:bg-red-600 text-white shadow-md">Reset</button>
+        </div>
+    </div>
+
+    <!-- The suggestion pop-up modal -->
+    <div id="suggestion-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Time's up!</h3>
+            <p id="suggestion-text" class="text-lg mb-6"></p>
+            <button id="close-suggestion-btn" class="control-button bg-green-500 hover:bg-green-600 text-white shadow-md">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Simple audio element for timer completion sound -->
+    <audio id="timer-sound" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" preload="auto"></audio>
+
+    <script>
+        // DOM elements
+        const timerDisplay = document.getElementById('timer');
+        const startButton = document.getElementById('start-btn');
+        const pauseButton = document.getElementById('pause-btn');
+        const resetButton = document.getElementById('reset-btn');
+        const pomodoroBtn = document.getElementById('pomodoro-btn');
+        const shortBreakBtn = document.getElementById('short-break-btn');
+        const longBreakBtn = document.getElementById('long-break-btn');
+        const timerSound = document.getElementById('timer-sound');
+        const pomodoroDurationSelect = document.getElementById('pomodoro-duration');
+        const suggestionModal = document.getElementById('suggestion-modal');
+        const suggestionText = document.getElementById('suggestion-text');
+        const closeSuggestionBtn = document.getElementById('close-suggestion-btn');
+
+        // Initial state
+        let timerInterval = null;
+        let isRunning = false;
+        let mode = 'pomodoro'; // pomodoro, shortBreak, longBreak
+
+        // Time settings in minutes
+        const timeSettings = {
+            shortBreak: 5,
+            longBreak: 15
+        };
+
+        // Activities for when the pomodoro timer ends (time to take a break)
+        const pomodoroEndActivities = [
+            "Funny: Draw the Ugliest Thing - Grab a piece of paper and a pen and spend a minute drawing the most ridiculous, nonsensical, and ugly doodle you can. The goal isn't to be good, it's to be silly.",
+            "Funny: Sing the ABCs in a silly voice - Stand up and sing the alphabet song in a funny voice—like a robot, a monster, or a grumpy old man.",
+            "Funny: The Silly Dance Party - Put on one of your favorite upbeat songs and just dance around your room. Don't worry about looking cool—just let loose and be goofy.",
+            "Healthy: The Wall Push - Stand with your back to a wall, about a foot away. Lean back and gently push against the wall with your back, arms, and head. This helps stretch your back and improve posture.",
+            "Healthy: Chair Yoga Stretches - Do some simple stretches without even leaving your chair. Examples include neck rolls, shoulder shrugs, and twisting your torso.",
+            "Healthy: Mindful Hydration - Don't just chug water. Pour yourself a glass and consciously think about the cool, refreshing feeling as you drink it. It's a small act of mindfulness.",
+            "Healthy: A Quick Walk Outside - Get some fresh air. Walk to the end of your street and back, or just around your yard. The change of scenery and sunlight can do wonders.",
+            "Healthy: Prepare a Healthy Snack - Cut up some fruit, grab a handful of nuts, or make a small smoothie. The act of preparing the food can be a good mental break, and the nutrients will give you a boost."
+        ];
+
+        // Activities for when a break is over (time to work again)
+        const breakEndActivities = [
+            "Your break is over. It's time to get back to work!",
+            "Ready for the next session? Let's go!",
+            "Time to dive back in. Start your Pomodoro!",
+            "Break time's done. Let's focus on the next task."
+        ];
+
+        let timeLeft = parseInt(pomodoroDurationSelect.value, 10) * 60; // Get initial time from the dropdown
+
+        // Functions
+        function updateTimerDisplay() {
+            const minutes = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+            const seconds = String(timeLeft % 60).padStart(2, '0');
+            timerDisplay.textContent = `${minutes}:${seconds}`;
+        }
+
+        function showSuggestion(suggestions) {
+            const randomIndex = Math.floor(Math.random() * suggestions.length);
+            suggestionText.textContent = suggestions[randomIndex];
+            suggestionModal.classList.remove('hidden');
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            suggestionModal.classList.add('hidden'); // Hide modal when starting timer
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    timerSound.play(); // Play the sound when the timer reaches zero
+                    
+                    if (mode === 'pomodoro') {
+                        showSuggestion(pomodoroEndActivities);
+                    } else {
+                        showSuggestion(breakEndActivities);
+                    }
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (!isRunning) return;
+            clearInterval(timerInterval);
+            isRunning = false;
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            suggestionModal.classList.add('hidden'); // Hide modal on reset
+            // Set time based on the current mode
+            if (mode === 'pomodoro') {
+                timeLeft = parseInt(pomodoroDurationSelect.value, 10) * 60;
+            } else {
+                timeLeft = timeSettings[mode] * 60;
+            }
+            updateTimerDisplay();
+        }
+
+        function switchMode(newMode) {
+            mode = newMode;
+            // Update active button styling
+            document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('active'));
+            
+            // Add a check to ensure the element exists before trying to access its class list
+            const newModeBtn = document.getElementById(`${newMode}-btn`);
+            if (newModeBtn) {
+                newModeBtn.classList.add('active');
+            }
+            
+            resetTimer(); // Reset the timer for the new mode
+        }
+
+        // Event listeners
+        startButton.addEventListener('click', startTimer);
+        pauseButton.addEventListener('click', pauseTimer);
+        resetButton.addEventListener('click', resetTimer);
+        closeSuggestionBtn.addEventListener('click', () => {
+            suggestionModal.classList.add('hidden');
+        });
+
+        pomodoroBtn.addEventListener('click', () => switchMode('pomodoro'));
+        shortBreakBtn.addEventListener('click', () => switchMode('shortBreak'));
+        longBreakBtn.addEventListener('click', () => switchMode('longBreak'));
+
+        // Listen for changes in the pomodoro duration dropdown
+        pomodoroDurationSelect.addEventListener('change', () => {
+            if (mode === 'pomodoro') {
+                resetTimer();
+            }
+        });
+
+        // Initial setup
+        updateTimerDisplay();
+    </script>
+</body>
+</html>
